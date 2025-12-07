@@ -1,12 +1,17 @@
 import { InteractiveCommand, InteractiveOption } from "interactive-commander";
 import Ora from "ora";
 import { getConfig, saveConfig } from "../utils/config";
-import { defaultConfig, LocaleCode, resolveLocaleCode, bucketTypes } from "@lingo.dev/_spec";
+import {
+  defaultConfig,
+  LocaleCode,
+  resolveLocaleCode,
+  bucketTypes,
+} from "@lingo.dev/_spec";
 import fs from "fs";
 import path from "path";
 import _ from "lodash";
 import { checkbox, confirm, input } from "@inquirer/prompts";
-import { login } from "./auth";
+import { login } from "./login";
 import { getSettings, saveSettings } from "../utils/settings";
 import { createAuthenticator } from "../utils/auth";
 import findLocaleFiles from "../utils/find-locale-paths";
@@ -31,11 +36,21 @@ const throwHelpError = (option: string, value: string) => {
 
 export default new InteractiveCommand()
   .command("init")
-  .description("Initialize Lingo.dev project")
+  .description("Create i18n.json configuration file for a new project")
   .helpOption("-h, --help", "Show help")
-  .addOption(new InteractiveOption("-f --force", "Overwrite existing config").prompt(undefined).default(false))
   .addOption(
-    new InteractiveOption("-s --source <locale>", "Source locale")
+    new InteractiveOption(
+      "-f --force",
+      "Overwrite existing Lingo.dev configuration instead of aborting initialization (destructive operation)",
+    )
+      .prompt(undefined)
+      .default(false),
+  )
+  .addOption(
+    new InteractiveOption(
+      "-s --source <locale>",
+      "Primary language of your application that content will be translated from. Defaults to 'en'",
+    )
       .argParser((value) => {
         try {
           resolveLocaleCode(value as LocaleCode);
@@ -47,9 +62,14 @@ export default new InteractiveCommand()
       .default("en"),
   )
   .addOption(
-    new InteractiveOption("-t --targets <locale...>", "List of target locales")
+    new InteractiveOption(
+      "-t --targets <locale...>",
+      "Target languages to translate to. Accepts locale codes like 'es', 'fr', 'de-AT' separated by commas or spaces. Defaults to 'es'",
+    )
       .argParser((value) => {
-        const values = (value.includes(",") ? value.split(",") : value.split(" ")) as LocaleCode[];
+        const values = (
+          value.includes(",") ? value.split(",") : value.split(" ")
+        ) as LocaleCode[];
         values.forEach((value) => {
           try {
             resolveLocaleCode(value);
@@ -62,7 +82,10 @@ export default new InteractiveCommand()
       .default("es"),
   )
   .addOption(
-    new InteractiveOption("-b, --bucket <type>", "Type of bucket")
+    new InteractiveOption(
+      "-b, --bucket <type>",
+      "File format for your translation files. Must match a supported type such as json, yaml, or android",
+    )
       .argParser((value) => {
         if (!bucketTypes.includes(value as (typeof bucketTypes)[number])) {
           throwHelpError("bucket format", value);
@@ -72,10 +95,15 @@ export default new InteractiveCommand()
       .default("json"),
   )
   .addOption(
-    new InteractiveOption("-p, --paths [path...]", "List of paths for the bucket")
+    new InteractiveOption(
+      "-p, --paths [path...]",
+      "File paths containing translations when using --no-interactive mode. Specify paths with [locale] placeholder, separated by commas or spaces",
+    )
       .argParser((value) => {
         if (!value || value.length === 0) return [];
-        const values = value.includes(",") ? value.split(",") : value.split(" ");
+        const values = value.includes(",")
+          ? value.split(",")
+          : value.split(" ");
 
         for (const p of values) {
           try {
@@ -148,7 +176,9 @@ export default new InteractiveCommand()
 
         if (selectedPatterns.length === 0) {
           const useDefault = await confirm({
-            message: `Use (and create) default path ${defaultPatterns.join(", ")}?`,
+            message: `Use (and create) default path ${defaultPatterns.join(
+              ", ",
+            )}?`,
           });
           if (useDefault) {
             ensurePatterns(defaultPatterns, options.source);
@@ -160,7 +190,9 @@ export default new InteractiveCommand()
           const customPaths = await input({
             message: "Enter paths to use",
           });
-          selectedPatterns = customPaths.includes(",") ? customPaths.split(",") : customPaths.split(" ");
+          selectedPatterns = customPaths.includes(",")
+            ? customPaths.split(",")
+            : customPaths.split(" ");
         }
 
         newConfig.buckets = {
@@ -178,7 +210,9 @@ export default new InteractiveCommand()
     if (isInteractive) {
       await initCICD(spinner);
 
-      const openDocs = await confirm({ message: "Would you like to see our docs?" });
+      const openDocs = await confirm({
+        message: "Would you like to see our docs?",
+      });
       if (openDocs) {
         openUrl("/go/docs");
       }
@@ -211,7 +245,9 @@ export default new InteractiveCommand()
           }
         }
       } else {
-        Ora().warn("You are not logged in. Run `npx lingo.dev@latest auth --login` to login.");
+        Ora().warn(
+          "You are not logged in. Run `npx lingo.dev@latest login` to login.",
+        );
       }
     } else {
       Ora().succeed(`Authenticated as ${auth.email}`);
@@ -220,6 +256,6 @@ export default new InteractiveCommand()
     updateGitignore();
 
     if (!isInteractive) {
-      Ora().info("Please see https://docs.lingo.dev/");
+      Ora().info("Please see https://lingo.dev/cli");
     }
   });

@@ -234,6 +234,139 @@ msgstr "[upd] Role"
     const result = await loader.push("en-upd", payload);
     expect(result).toEqual(updatedInput);
   });
+
+  it("fallbacks to msgid when single msgstr value is empty", async () => {
+    const loader = createLoader();
+    const input = `
+#: hello.py:1
+msgid "File"
+msgstr ""
+    `.trim();
+
+    const data = await loader.pull("en", input);
+    expect(data).toEqual({
+      File: {
+        singular: "File",
+        plural: null,
+      },
+    });
+  });
+
+  it("fallbacks to msgid when msgstr values are empty", async () => {
+    const loader = createLoader();
+    const input = `
+#: hello.py:1
+msgid "File"
+msgstr[0] ""
+msgstr[1] ""
+    `.trim();
+
+    const data = await loader.pull("en", input);
+    expect(data).toEqual({
+      File: {
+        singular: "File",
+        plural: "File",
+      },
+    });
+  });
+
+  it("does not fallback to msgid for non-source locale when single msgstr value is empty", async () => {
+    const loader = createLoader();
+    const input = `
+#: hello.py:1
+msgid "File"
+msgstr ""
+    `.trim();
+
+    // First, pull default locale to satisfy loader invariants
+    await loader.pull("en", input);
+
+    // Pull a different locale with the same content
+    const data = await loader.pull("fr", input);
+
+    expect(data).toEqual({
+      File: {
+        singular: null,
+        plural: null,
+      },
+    });
+  });
+
+  it("does not fallback to msgid for non-source locale when msgstr values are empty", async () => {
+    const loader = createLoader();
+    const input = `
+#: hello.py:1
+msgid "File"
+msgstr[0] ""
+msgstr[1] ""
+    `.trim();
+
+    // Pull default locale first
+    await loader.pull("en", input);
+
+    // Pull a different locale
+    const data = await loader.pull("fr", input);
+
+    expect(data).toEqual({
+      File: {
+        singular: null,
+        plural: null,
+      },
+    });
+  });
+
+  it("should preserve order of comments (file and line number, translator notes)", async () => {
+    const loader = createLoader();
+    const input = `
+# My animal
+#, animal
+#. This is an animal
+#: hello.py:1
+# I like animals
+#| foobar
+msgid "Zebra"
+msgstr ""
+
+#. This is a bird
+#: hello.py:2
+msgid "Parrot"
+msgstr ""
+
+#. Food
+msgid "Apple"
+msgstr ""
+    `.trim();
+
+    const data = await loader.pull("en", input);
+
+    const updatedData = {
+      Zebra: { singular: "[upd] Zebra", plural: null },
+      Parrot: { singular: "[upd] Parrot", plural: null },
+      Apple: { singular: "[upd] Apple", plural: null },
+    };
+    const expectedOutput = `
+# My animal
+#, animal
+#. This is an animal
+#: hello.py:1
+# I like animals
+#| foobar
+msgid "Zebra"
+msgstr "[upd] Zebra"
+
+#. This is a bird
+#: hello.py:2
+msgid "Parrot"
+msgstr "[upd] Parrot"
+
+#. Food
+msgid "Apple"
+msgstr "[upd] Apple"
+    `.trim();
+
+    const result = await loader.push("en", updatedData);
+    expect(result).toEqual(expectedOutput);
+  });
 });
 
 function createLoader(params: PoLoaderParams = { multiline: false }) {

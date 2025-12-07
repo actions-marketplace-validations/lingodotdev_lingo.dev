@@ -1,6 +1,8 @@
 import { ILoader, ILoaderDefinition } from "./_types";
 
-export function composeLoaders(...loaders: ILoader<any, any, any>[]): ILoader<any, any> {
+export function composeLoaders(
+  ...loaders: ILoader<any, any, any>[]
+): ILoader<any, any> {
   return {
     init: async () => {
       for (const loader of loaders) {
@@ -27,10 +29,22 @@ export function composeLoaders(...loaders: ILoader<any, any, any>[]): ILoader<an
       }
       return result;
     },
+    pullHints: async (originalInput?) => {
+      let result: any = originalInput;
+      for (let i = 0; i < loaders.length; i++) {
+        const subResult = await loaders[i].pullHints?.(result);
+        if (subResult) {
+          result = subResult;
+        }
+      }
+      return result;
+    },
   };
 }
 
-export function createLoader<I, O, C>(lDefinition: ILoaderDefinition<I, O, C>): ILoader<I, O, C> {
+export function createLoader<I, O, C>(
+  lDefinition: ILoaderDefinition<I, O, C>,
+): ILoader<I, O, C> {
   const state = {
     defaultLocale: undefined as string | undefined,
     originalInput: undefined as I | undefined | null,
@@ -53,6 +67,9 @@ export function createLoader<I, O, C>(lDefinition: ILoaderDefinition<I, O, C>): 
       state.defaultLocale = locale;
       return this;
     },
+    async pullHints(originalInput?: I) {
+      return lDefinition.pullHints?.(originalInput || state.originalInput!);
+    },
     async pull(locale, input) {
       if (!state.defaultLocale) {
         throw new Error("Default locale not set");
@@ -65,7 +82,13 @@ export function createLoader<I, O, C>(lDefinition: ILoaderDefinition<I, O, C>): 
       }
 
       state.pullInput = input;
-      const result = await lDefinition.pull(locale, input, state.initCtx);
+      const result = await lDefinition.pull(
+        locale,
+        input,
+        state.initCtx!,
+        state.defaultLocale,
+        state.originalInput!,
+      );
       state.pullOutput = result;
 
       return result;

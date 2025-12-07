@@ -1,5 +1,255 @@
 # @lingo.dev/\_sdk
 
+## 0.13.3
+
+### Patch Changes
+
+- Updated dependencies [[`738bf08`](https://github.com/lingodotdev/lingo.dev/commit/738bf08edfe226392ec4534e05864101bc66c39c)]:
+  - @lingo.dev/_spec@0.44.3
+
+## 0.13.2
+
+### Patch Changes
+
+- Updated dependencies [[`f6352b6`](https://github.com/lingodotdev/lingo.dev/commit/f6352b6222e425d5d184c1591a90b1d13a7effbc)]:
+  - @lingo.dev/_spec@0.44.2
+
+## 0.13.1
+
+### Patch Changes
+
+- Updated dependencies [[`ad646a4`](https://github.com/lingodotdev/lingo.dev/commit/ad646a4f44dc2f0771eb3aa2783872b4d0e55f57)]:
+  - @lingo.dev/_spec@0.44.1
+
+## 0.13.0
+
+### Minor Changes
+
+- [#1634](https://github.com/lingodotdev/lingo.dev/pull/1634) [`48fab66`](https://github.com/lingodotdev/lingo.dev/commit/48fab66b6806455d9faa1dcb169d4c61194e2144) Thanks [@maxprilutskiy](https://github.com/maxprilutskiy)! - Pin all dependencies to exact versions to prevent supply chain attacks. Dependencies no longer use caret (^) or tilde (~) ranges, ensuring full control over version updates and requiring explicit review of all dependency changes.
+
+### Patch Changes
+
+- Updated dependencies [[`48fab66`](https://github.com/lingodotdev/lingo.dev/commit/48fab66b6806455d9faa1dcb169d4c61194e2144)]:
+  - @lingo.dev/_spec@0.44.0
+
+## 0.12.9
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @lingo.dev/_spec@0.43.1
+
+## 0.12.8
+
+### Patch Changes
+
+- Updated dependencies [[`ac38e8e`](https://github.com/lingodotdev/lingo.dev/commit/ac38e8e8dea0d8c4cd3c8b00e6394bfbd8074611)]:
+  - @lingo.dev/_spec@0.43.0
+
+## 0.12.7
+
+### Patch Changes
+
+- Updated dependencies [[`d72c67c`](https://github.com/lingodotdev/lingo.dev/commit/d72c67c78a4d8f01077db8098b5d973ec98a4c1e)]:
+  - @lingo.dev/_spec@0.42.0
+
+## 0.12.6
+
+### Patch Changes
+
+- [#1230](https://github.com/lingodotdev/lingo.dev/pull/1230) [`b45347c`](https://github.com/lingodotdev/lingo.dev/commit/b45347c38572ee371b2bc494261b7e3e90c4aed1) Thanks [@vrcprl](https://github.com/vrcprl)! - add an xcode-xcstrings-v2 bucket type that supports cldr pluralization rules
+
+- Updated dependencies [[`b45347c`](https://github.com/lingodotdev/lingo.dev/commit/b45347c38572ee371b2bc494261b7e3e90c4aed1)]:
+  - @lingo.dev/_spec@0.41.1
+
+## 0.12.5
+
+### Patch Changes
+
+- Updated dependencies [[`82f5e7c`](https://github.com/lingodotdev/lingo.dev/commit/82f5e7cdde9a2a15b4c2a7fcb8c67ed64eab596b), [`e858174`](https://github.com/lingodotdev/lingo.dev/commit/e858174fd5165e0ea3e3f25fa1fc3edb292bc58f)]:
+  - @lingo.dev/_spec@0.41.0
+
+## 0.12.4
+
+### Patch Changes
+
+- Updated dependencies [[`1fa218c`](https://github.com/lingodotdev/lingo.dev/commit/1fa218c13bf90df6d175fb18264f59c1a10b967c)]:
+  - @lingo.dev/_spec@0.40.4
+
+## 0.12.3
+
+### Patch Changes
+
+- Updated dependencies [[`bbc71b9`](https://github.com/lingodotdev/lingo.dev/commit/bbc71b9948ccc289c9669d8b0c276c9596f6a5e7)]:
+  - @lingo.dev/_spec@0.40.3
+
+## 0.12.2
+
+### Patch Changes
+
+- Updated dependencies [[`6579d70`](https://github.com/lingodotdev/lingo.dev/commit/6579d70bc670c2fdc06c09842d931b07e134151c)]:
+  - @lingo.dev/_spec@0.40.2
+
+## 0.12.1
+
+### Patch Changes
+
+- Updated dependencies [[`a35032e`](https://github.com/lingodotdev/lingo.dev/commit/a35032e7e7a188d1f5e774576352068124526e24)]:
+  - @lingo.dev/_spec@0.40.1
+
+## 0.12.0
+
+### Minor Changes
+
+- [#1066](https://github.com/lingodotdev/lingo.dev/pull/1066) [`6af91a0`](https://github.com/lingodotdev/lingo.dev/commit/6af91a083d16f85051fb49a4034789abe784017e) Thanks [@maxprilutskiy](https://github.com/maxprilutskiy)! - add hints support
+
+### Patch Changes
+
+- Updated dependencies [[`6af91a0`](https://github.com/lingodotdev/lingo.dev/commit/6af91a083d16f85051fb49a4034789abe784017e)]:
+  - @lingo.dev/_spec@0.40.0
+
+## 0.11.0
+
+### Minor Changes
+
+- [#1049](https://github.com/lingodotdev/lingo.dev/pull/1049) [`85dfc10`](https://github.com/lingodotdev/lingo.dev/commit/85dfc10961b116e31b2bb478f42013756ca49974) Thanks [@VAIBHAVSING](https://github.com/VAIBHAVSING)! - Added new methods to the SDK:
+  1. `localizeStringArray`: Localizes an array of strings while maintaining their order.
+
+  Also added comprehensive tests for these methods using Vitest.
+
+## 0.10.2
+
+### Patch Changes
+
+- Updated dependencies [[`afbb978`](https://github.com/lingodotdev/lingo.dev/commit/afbb978fec83d574f2c43b7d68457e435fca9b57)]:
+  - @lingo.dev/_spec@0.39.3
+
+## 0.10.1
+
+### Patch Changes
+
+- [#1023](https://github.com/lingodotdev/lingo.dev/pull/1023) [`9266fd0`](https://github.com/lingodotdev/lingo.dev/commit/9266fd0bcddf4b07ca51d2609af92a9473106f9d) Thanks [@devin-ai-integration](https://github.com/apps/devin-ai-integration)! - Update Zod dependency to version 3.25.76
+
+- Updated dependencies [[`9266fd0`](https://github.com/lingodotdev/lingo.dev/commit/9266fd0bcddf4b07ca51d2609af92a9473106f9d)]:
+  - @lingo.dev/_spec@0.39.2
+
+## 0.10.0
+
+### Minor Changes
+
+- [#998](https://github.com/lingodotdev/lingo.dev/pull/998) [`cb2aa0f`](https://github.com/lingodotdev/lingo.dev/commit/cb2aa0f505d6b7dbc435b526e8a6f62265d1f453) Thanks [@VAIBHAVSING](https://github.com/VAIBHAVSING)! - Added support for AbortController to all public SDK methods, enabling consumers to cancel long-running operations using the standard AbortController API. Refactored internal methods to propagate AbortSignal and check for abortion between batch chunks. Updated fetch calls to use AbortSignal for network request cancellation.
+
+## 0.9.6
+
+### Patch Changes
+
+- Updated dependencies [[`acd5356`](https://github.com/lingodotdev/lingo.dev/commit/acd5356b68d2261576240c173fea790864c3c31d)]:
+  - @lingo.dev/_spec@0.39.1
+
+## 0.9.5
+
+### Patch Changes
+
+- Updated dependencies [[`f644123`](https://github.com/lingodotdev/lingo.dev/commit/f644123ddf6a6254790d08af50141e4dd78c3677)]:
+  - @lingo.dev/_spec@0.39.0
+
+## 0.9.4
+
+### Patch Changes
+
+- Updated dependencies [[`84fd214`](https://github.com/lingodotdev/lingo.dev/commit/84fd214a21766e7683c5d645fcb8c4c0162eb0b6)]:
+  - @lingo.dev/_spec@0.38.0
+
+## 0.9.3
+
+### Patch Changes
+
+- Updated dependencies [[`ce8c75c`](https://github.com/lingodotdev/lingo.dev/commit/ce8c75c7fc1a2124d3e18444bc356c4dfce26434)]:
+  - @lingo.dev/_spec@0.37.0
+
+## 0.9.2
+
+### Patch Changes
+
+- [#937](https://github.com/lingodotdev/lingo.dev/pull/937) [`4e5983d`](https://github.com/lingodotdev/lingo.dev/commit/4e5983d7e59ebf9eb529c4b7c1c87689432ac873) Thanks [@devin-ai-integration](https://github.com/apps/devin-ai-integration)! - Update documentation URLs from docs.lingo.dev to lingo.dev/cli and lingo.dev/compiler
+
+## 0.9.1
+
+### Patch Changes
+
+- Updated dependencies [[`1b9b113`](https://github.com/lingodotdev/lingo.dev/commit/1b9b11301978e8caa2555832d027ff93216aa6e1), [`0329a9c`](https://github.com/lingodotdev/lingo.dev/commit/0329a9cdb5e5a63fcecab4efcd7cce22f155a0e9)]:
+  - @lingo.dev/_spec@0.36.0
+
+## 0.9.0
+
+### Minor Changes
+
+- [#915](https://github.com/lingodotdev/lingo.dev/pull/915) [`6b4b9e6`](https://github.com/lingodotdev/lingo.dev/commit/6b4b9e6cc9a0cb5da8a4df9e9ebda474bf2a18ed) Thanks [@devin-ai-integration](https://github.com/apps/devin-ai-integration)! - feat: enhance 5xx error handling with Cloudflare status integration
+
+- [#915](https://github.com/lingodotdev/lingo.dev/pull/915) [`6b4b9e6`](https://github.com/lingodotdev/lingo.dev/commit/6b4b9e6cc9a0cb5da8a4df9e9ebda474bf2a18ed) Thanks [@devin-ai-integration](https://github.com/apps/devin-ai-integration)! - feat: enhance 5xx error handling with Cloudflare status integration
+
+## 0.8.1
+
+### Patch Changes
+
+- Updated dependencies [[`a5da697`](https://github.com/lingodotdev/lingo.dev/commit/a5da697f7efd46de31d17b202d06eb5f655ed9b9)]:
+  - @lingo.dev/_spec@0.35.0
+
+## 0.8.0
+
+### Minor Changes
+
+- [`e980e84`](https://github.com/lingodotdev/lingo.dev/commit/e980e84178439ad70417d38b425acf9148cfc4b6) Thanks [@maxprilutskiy](https://github.com/maxprilutskiy)! - added the compiler
+
+### Patch Changes
+
+- Updated dependencies [[`e980e84`](https://github.com/lingodotdev/lingo.dev/commit/e980e84178439ad70417d38b425acf9148cfc4b6)]:
+  - @lingo.dev/_spec@0.34.0
+
+## 0.7.43
+
+### Patch Changes
+
+- Updated dependencies [[`0272fbf`](https://github.com/lingodotdev/lingo.dev/commit/0272fbf8847240ed9453130237d5843b918f869f)]:
+  - @lingo.dev/_spec@0.33.3
+
+## 0.7.42
+
+### Patch Changes
+
+- [#782](https://github.com/lingodotdev/lingo.dev/pull/782) [`d913c20`](https://github.com/lingodotdev/lingo.dev/commit/d913c20fdf0086741c8b50fd4ddfb38eae304a24) Thanks [@maxprilutskiy](https://github.com/maxprilutskiy)! - parallel processing
+
+- Updated dependencies [[`d913c20`](https://github.com/lingodotdev/lingo.dev/commit/d913c20fdf0086741c8b50fd4ddfb38eae304a24)]:
+  - @lingo.dev/_spec@0.33.2
+
+## 0.7.41
+
+### Patch Changes
+
+- Updated dependencies [[`3f2aba9`](https://github.com/lingodotdev/lingo.dev/commit/3f2aba9c1d5834faf89a26194f1f3d9f9b878d40)]:
+  - @lingo.dev/_spec@0.33.1
+
+## 0.7.40
+
+### Patch Changes
+
+- Updated dependencies [[`9aa7004`](https://github.com/lingodotdev/lingo.dev/commit/9aa700491446865dc131b80419f681132b888652)]:
+  - @lingo.dev/_spec@0.33.0
+
+## 0.7.39
+
+### Patch Changes
+
+- Updated dependencies [[`5170449`](https://github.com/lingodotdev/lingo.dev/commit/517044905dfc682d6a5fa95b0605b8715e2b72c7)]:
+  - @lingo.dev/_spec@0.32.0
+
+## 0.7.38
+
+### Patch Changes
+
+- Updated dependencies [[`c5ccf81`](https://github.com/lingodotdev/lingo.dev/commit/c5ccf81e9c2bd27bae332306da2a41e41bbeb87d)]:
+  - @lingo.dev/_spec@0.31.0
+
 ## 0.7.37
 
 ### Patch Changes

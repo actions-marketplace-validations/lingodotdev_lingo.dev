@@ -1,9 +1,10 @@
 {
-  "version": 1.2,
+  "version": "1.10",
   "locale": {
     "source": "en",
     "targets": [
       "ru",
+      "he",
       "fr",
       "es",
       "de",
@@ -15,14 +16,16 @@
       "hi",
       "pt-BR",
       "uk-UA",
-      "bn"
+      "bn",
+      "fa",
+      "pl",
+      "tr",
+      "ur"
     ]
   },
   "buckets": {
-    "markdown": {
-      "include": [
-        "readme/[locale].md"
-      ]
+    "mdx": {
+      "include": ["readme/[locale].md"]
     }
   },
   "$schema": "https://lingo.dev/schema/i18n.json"

@@ -1,5 +1,211 @@
 # @lingo.dev/\_spec
 
+## 0.44.3
+
+### Patch Changes
+
+- [#1655](https://github.com/lingodotdev/lingo.dev/pull/1655) [`738bf08`](https://github.com/lingodotdev/lingo.dev/commit/738bf08edfe226392ec4534e05864101bc66c39c) Thanks [@vrcprl](https://github.com/vrcprl)! - add AIL bucket
+
+## 0.44.2
+
+### Patch Changes
+
+- [#1653](https://github.com/lingodotdev/lingo.dev/pull/1653) [`f6352b6`](https://github.com/lingodotdev/lingo.dev/commit/f6352b6222e425d5d184c1591a90b1d13a7effbc) Thanks [@vrcprl](https://github.com/vrcprl)! - add Twig bucket
+
+## 0.44.1
+
+### Patch Changes
+
+- [#1628](https://github.com/lingodotdev/lingo.dev/pull/1628) [`ad646a4`](https://github.com/lingodotdev/lingo.dev/commit/ad646a4f44dc2f0771eb3aa2783872b4d0e55f57) Thanks [@vrcprl](https://github.com/vrcprl)! - Add MJML bucket support
+
+## 0.44.0
+
+### Minor Changes
+
+- [#1634](https://github.com/lingodotdev/lingo.dev/pull/1634) [`48fab66`](https://github.com/lingodotdev/lingo.dev/commit/48fab66b6806455d9faa1dcb169d4c61194e2144) Thanks [@maxprilutskiy](https://github.com/maxprilutskiy)! - Pin all dependencies to exact versions to prevent supply chain attacks. Dependencies no longer use caret (^) or tilde (~) ranges, ensuring full control over version updates and requiring explicit review of all dependency changes.
+
+### Patch Changes
+
+- Updated dependencies [[`48fab66`](https://github.com/lingodotdev/lingo.dev/commit/48fab66b6806455d9faa1dcb169d4c61194e2144)]:
+  - @lingo.dev/_locales@0.3.0
+
+## 0.43.1
+
+### Patch Changes
+
+- Updated dependencies [[`0f6ffbf`](https://github.com/lingodotdev/lingo.dev/commit/0f6ffbf7dafafbead768eb9e52787cb6013aa1c3)]:
+  - @lingo.dev/_locales@0.2.0
+
+## 0.43.0
+
+### Minor Changes
+
+- [#1585](https://github.com/lingodotdev/lingo.dev/pull/1585) [`ac38e8e`](https://github.com/lingodotdev/lingo.dev/commit/ac38e8e8dea0d8c4cd3c8b00e6394bfbd8074611) Thanks [@maxprilutskiy](https://github.com/maxprilutskiy)! - Allow any valid ISO locale code in validation instead of hardcoded list. Validation now accepts any locale conforming to ISO 639-1, ISO 15924, ISO 3166-1, and UN M.49 standards.
+
+## 0.42.0
+
+### Minor Changes
+
+- [#1583](https://github.com/lingodotdev/lingo.dev/pull/1583) [`d72c67c`](https://github.com/lingodotdev/lingo.dev/commit/d72c67c78a4d8f01077db8098b5d973ec98a4c1e) Thanks [@maxprilutskiy](https://github.com/maxprilutskiy)! - Allow any valid ISO locale code in validation instead of hardcoded list. Validation now accepts any locale conforming to ISO 639-1, ISO 15924, ISO 3166-1, and UN M.49 standards.
+
+## 0.41.1
+
+### Patch Changes
+
+- [#1230](https://github.com/lingodotdev/lingo.dev/pull/1230) [`b45347c`](https://github.com/lingodotdev/lingo.dev/commit/b45347c38572ee371b2bc494261b7e3e90c4aed1) Thanks [@vrcprl](https://github.com/vrcprl)! - add an xcode-xcstrings-v2 bucket type that supports cldr pluralization rules
+
+## 0.41.0
+
+### Minor Changes
+
+- [#1186](https://github.com/lingodotdev/lingo.dev/pull/1186) [`82f5e7c`](https://github.com/lingodotdev/lingo.dev/commit/82f5e7cdde9a2a15b4c2a7fcb8c67ed64eab596b) Thanks [@davidturnbull](https://github.com/davidturnbull)! - Add Markdoc support
+
+### Patch Changes
+
+- [#1215](https://github.com/lingodotdev/lingo.dev/pull/1215) [`e858174`](https://github.com/lingodotdev/lingo.dev/commit/e858174fd5165e0ea3e3f25fa1fc3edb292bc58f) Thanks [@vrcprl](https://github.com/vrcprl)! - add provider settings
+
+## 0.40.4
+
+### Patch Changes
+
+- [#1201](https://github.com/lingodotdev/lingo.dev/pull/1201) [`1fa218c`](https://github.com/lingodotdev/lingo.dev/commit/1fa218c13bf90df6d175fb18264f59c1a10b967c) Thanks [@vrcprl](https://github.com/vrcprl)! - add new languages Malayalam (India), Armenian (Armenia), Macedonian (Macedonia)
+
+## 0.40.3
+
+### Patch Changes
+
+- [#1192](https://github.com/lingodotdev/lingo.dev/pull/1192) [`bbc71b9`](https://github.com/lingodotdev/lingo.dev/commit/bbc71b9948ccc289c9669d8b0c276c9596f6a5e7) Thanks [@vrcprl](https://github.com/vrcprl)! - Add biome support
+
+## 0.40.2
+
+### Patch Changes
+
+- [#1171](https://github.com/lingodotdev/lingo.dev/pull/1171) [`6579d70`](https://github.com/lingodotdev/lingo.dev/commit/6579d70bc670c2fdc06c09842d931b07e134151c) Thanks [@vrcprl](https://github.com/vrcprl)! - add el-CY en-IE fr-LU locales
+
+## 0.40.1
+
+### Patch Changes
+
+- [#1016](https://github.com/lingodotdev/lingo.dev/pull/1016) [`a35032e`](https://github.com/lingodotdev/lingo.dev/commit/a35032e7e7a188d1f5e774576352068124526e24) Thanks [@davidturnbull](https://github.com/davidturnbull)! - feat: add automated config documentation generator for i18n.json schema
+
+## 0.40.0
+
+### Minor Changes
+
+- [#1066](https://github.com/lingodotdev/lingo.dev/pull/1066) [`6af91a0`](https://github.com/lingodotdev/lingo.dev/commit/6af91a083d16f85051fb49a4034789abe784017e) Thanks [@maxprilutskiy](https://github.com/maxprilutskiy)! - add hints support for xcode and jsonc buckets
+
+## 0.39.3
+
+### Patch Changes
+
+- [#1031](https://github.com/lingodotdev/lingo.dev/pull/1031) [`afbb978`](https://github.com/lingodotdev/lingo.dev/commit/afbb978fec83d574f2c43b7d68457e435fca9b57) Thanks [@mathio](https://github.com/mathio)! - add json-dictionary loader support
+
+## 0.39.2
+
+### Patch Changes
+
+- [#1023](https://github.com/lingodotdev/lingo.dev/pull/1023) [`9266fd0`](https://github.com/lingodotdev/lingo.dev/commit/9266fd0bcddf4b07ca51d2609af92a9473106f9d) Thanks [@devin-ai-integration](https://github.com/apps/devin-ai-integration)! - Update Zod dependency to version 3.25.76
+
+## 0.39.1
+
+### Patch Changes
+
+- [#995](https://github.com/lingodotdev/lingo.dev/pull/995) [`acd5356`](https://github.com/lingodotdev/lingo.dev/commit/acd5356b68d2261576240c173fea790864c3c31d) Thanks [@devin-ai-integration](https://github.com/apps/devin-ai-integration)! - Add Icelandic (is) locale support with is-IS regional variant
+
+## 0.39.0
+
+### Minor Changes
+
+- [#981](https://github.com/lingodotdev/lingo.dev/pull/981) [`f644123`](https://github.com/lingodotdev/lingo.dev/commit/f644123ddf6a6254790d08af50141e4dd78c3677) Thanks [@devin-ai-integration](https://github.com/apps/devin-ai-integration)! - Add support for plain TXT files to enable translation of fastlane App Store metadata and other plain text content
+
+## 0.38.0
+
+### Minor Changes
+
+- [#958](https://github.com/lingodotdev/lingo.dev/pull/958) [`84fd214`](https://github.com/lingodotdev/lingo.dev/commit/84fd214a21766e7683c5d645fcb8c4c0162eb0b6) Thanks [@chrissiwaffler](https://github.com/chrissiwaffler)! - feat: add Mistral AI as a supported LLM provider
+  - Added Mistral AI provider support across the entire lingo.dev ecosystem
+  - Users can now use Mistral models for localization by setting MISTRAL_API_KEY
+  - Supports all Mistral models available through the @ai-sdk/mistral package
+  - Configuration via environment variable or user-wide config: `npx lingo.dev@latest config set llm.mistralApiKey <key>`
+
+## 0.37.0
+
+### Minor Changes
+
+- [#956](https://github.com/lingodotdev/lingo.dev/pull/956) [`ce8c75c`](https://github.com/lingodotdev/lingo.dev/commit/ce8c75c7fc1a2124d3e18444bc356c4dfce26434) Thanks [@VAIBHAVSING](https://github.com/VAIBHAVSING)! - feat: add EJS (Embedded JavaScript) templating engine support
+  - Added EJS loader to support parsing and translating EJS template files
+  - EJS loader extracts translatable text while preserving EJS tags and expressions
+  - Updated spec package to include "ejs" in supported bucket types
+  - Added comprehensive test suite covering various EJS scenarios including conditionals, loops, includes, and mixed content
+  - Automatically installed EJS dependency (@types/ejs) for TypeScript support
+
+## 0.36.0
+
+### Minor Changes
+
+- [#913](https://github.com/lingodotdev/lingo.dev/pull/913) [`1b9b113`](https://github.com/lingodotdev/lingo.dev/commit/1b9b11301978e8caa2555832d027ff93216aa6e1) Thanks [@The-Best-Codes](https://github.com/The-Best-Codes)! - Add support for Ollama as a CLI and Compiler provider.
+
+### Patch Changes
+
+- [#922](https://github.com/lingodotdev/lingo.dev/pull/922) [`0329a9c`](https://github.com/lingodotdev/lingo.dev/commit/0329a9cdb5e5a63fcecab4efcd7cce22f155a0e9) Thanks [@maxprilutskiy](https://github.com/maxprilutskiy)! - add openrouter ais support for compiler
+
+## 0.35.0
+
+### Minor Changes
+
+- [#897](https://github.com/lingodotdev/lingo.dev/pull/897) [`a5da697`](https://github.com/lingodotdev/lingo.dev/commit/a5da697f7efd46de31d17b202d06eb5f655ed9b9) Thanks [@maxprilutskiy](https://github.com/maxprilutskiy)! - Add support for other providers in the compiler and implement Google AI as a provider.
+
+## 0.34.0
+
+### Minor Changes
+
+- [`e980e84`](https://github.com/lingodotdev/lingo.dev/commit/e980e84178439ad70417d38b425acf9148cfc4b6) Thanks [@maxprilutskiy](https://github.com/maxprilutskiy)! - added the compiler
+
+## 0.33.3
+
+### Patch Changes
+
+- [#805](https://github.com/lingodotdev/lingo.dev/pull/805) [`0272fbf`](https://github.com/lingodotdev/lingo.dev/commit/0272fbf8847240ed9453130237d5843b918f869f) Thanks [@Vicentesan](https://github.com/Vicentesan)! - Introduce the gregorian language (ka-GE)
+
+## 0.33.2
+
+### Patch Changes
+
+- [#782](https://github.com/lingodotdev/lingo.dev/pull/782) [`d913c20`](https://github.com/lingodotdev/lingo.dev/commit/d913c20fdf0086741c8b50fd4ddfb38eae304a24) Thanks [@maxprilutskiy](https://github.com/maxprilutskiy)! - parallel processing
+
+## 0.33.1
+
+### Patch Changes
+
+- [#778](https://github.com/lingodotdev/lingo.dev/pull/778) [`3f2aba9`](https://github.com/lingodotdev/lingo.dev/commit/3f2aba9c1d5834faf89a26194f1f3d9f9b878d40) Thanks [@maxprilutskiy](https://github.com/maxprilutskiy)! - add ignoredKeys
+
+## 0.33.0
+
+### Minor Changes
+
+- [#759](https://github.com/lingodotdev/lingo.dev/pull/759) [`9aa7004`](https://github.com/lingodotdev/lingo.dev/commit/9aa700491446865dc131b80419f681132b888652) Thanks [@devin-ai-integration](https://github.com/apps/devin-ai-integration)! - Enhance TypeScript loader to support nested fields and arrays
+
+## 0.32.0
+
+### Minor Changes
+
+- [#757](https://github.com/lingodotdev/lingo.dev/pull/757) [`5170449`](https://github.com/lingodotdev/lingo.dev/commit/517044905dfc682d6a5fa95b0605b8715e2b72c7) Thanks [@devin-ai-integration](https://github.com/apps/devin-ai-integration)! - Add TypeScript loader for .ts files that extracts string literals from default exports
+
+## 0.31.0
+
+### Minor Changes
+
+- [#700](https://github.com/lingodotdev/lingo.dev/pull/700) [`c5ccf81`](https://github.com/lingodotdev/lingo.dev/commit/c5ccf81e9c2bd27bae332306da2a41e41bbeb87d) Thanks [@devin-ai-integration](https://github.com/apps/devin-ai-integration)! - Add support for locked patterns in MDX loader
+
+  This change adds support for preserving specific patterns in MDX files during translation, including:
+  - !params syntax for parameter documentation
+  - !! parameter_name headings
+  - !type declarations
+  - !required flags
+  - !values lists
+
+  The implementation adds a new config version 1.7 with a "lockedPatterns" field that accepts an array of regex patterns to be preserved during translation.
+
 ## 0.30.3
 
 ### Patch Changes

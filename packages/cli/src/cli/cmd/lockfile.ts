@@ -9,31 +9,51 @@ import { getBuckets } from "../utils/buckets";
 
 export default new Command()
   .command("lockfile")
-  .description("Create a lockfile if it does not exist")
+  .description(
+    "Generate or refresh i18n.lock based on the current source locale content",
+  )
   .helpOption("-h, --help", "Show help")
-  .option("-f, --force", "Force create a lockfile")
+  .option(
+    "-f, --force",
+    "Overwrite existing lockfile to reset translation tracking",
+  )
   .action(async (options) => {
     const flags = flagsSchema.parse(options);
     const ora = Ora();
 
     const lockfileHelper = createLockfileHelper();
     if (lockfileHelper.isLockfileExists() && !flags.force) {
-      ora.warn(`Lockfile won't be created because it already exists. Use --force to overwrite.`);
+      ora.warn(
+        `Lockfile won't be created because it already exists. Use --force to overwrite.`,
+      );
     } else {
       const i18nConfig = getConfig();
       const buckets = getBuckets(i18nConfig!);
 
       for (const bucket of buckets) {
         for (const bucketConfig of bucket.paths) {
-          const sourceLocale = resolveOverriddenLocale(i18nConfig!.locale.source, bucketConfig.delimiter);
-          const bucketLoader = createBucketLoader(bucket.type, bucketConfig.pathPattern, {
-            isCacheRestore: false,
-            defaultLocale: sourceLocale,
-          });
+          const sourceLocale = resolveOverriddenLocale(
+            i18nConfig!.locale.source,
+            bucketConfig.delimiter,
+          );
+          const bucketLoader = createBucketLoader(
+            bucket.type,
+            bucketConfig.pathPattern,
+            {
+              defaultLocale: sourceLocale,
+              formatter: i18nConfig!.formatter,
+            },
+            bucket.lockedKeys,
+            bucket.lockedPatterns,
+            bucket.ignoredKeys,
+          );
           bucketLoader.setDefaultLocale(sourceLocale);
 
           const sourceData = await bucketLoader.pull(sourceLocale);
-          lockfileHelper.registerSourceData(bucketConfig.pathPattern, sourceData);
+          lockfileHelper.registerSourceData(
+            bucketConfig.pathPattern,
+            sourceData,
+          );
         }
       }
       ora.succeed("Lockfile created");

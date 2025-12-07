@@ -40,7 +40,9 @@ describe("ReplexicaEngine", () => {
       const mockLocalizeRaw = vi.spyOn(engine as any, "_localizeRaw");
       mockLocalizeRaw.mockImplementation(async (content: any) => {
         // Simulate translation by adding 'ES:' prefix to all strings
-        return Object.fromEntries(Object.entries(content).map(([key, value]) => [key, `ES:${value}`]));
+        return Object.fromEntries(
+          Object.entries(content).map(([key, value]) => [key, `ES:${value}`]),
+        );
       });
 
       // Execute the localization
@@ -72,6 +74,7 @@ describe("ReplexicaEngine", () => {
           targetLocale: "es",
         },
         undefined,
+        undefined, // AbortSignal
       );
 
       // Verify the final HTML structure
@@ -83,7 +86,157 @@ describe("ReplexicaEngine", () => {
       expect(result).toContain('title="ES:Link title"');
       expect(result).toContain('alt="ES:Test image"');
       expect(result).toContain('placeholder="ES:Enter text"');
-      expect(result).toContain('const doNotTranslate = "this text should be ignored"');
+      expect(result).toContain(
+        'const doNotTranslate = "this text should be ignored"',
+      );
+    });
+  });
+
+  describe("localizeStringArray", () => {
+    it("should localize an array of strings and maintain order", async () => {
+      const engine = new LingoDotDevEngine({ apiKey: "test" });
+      const mockLocalizeObject = vi.spyOn(engine, "localizeObject");
+      mockLocalizeObject.mockImplementation(async (obj: any) => {
+        // Simulate translation by adding 'ES:' prefix to all string values
+        return Object.fromEntries(
+          Object.entries(obj).map(([key, value]) => [key, `ES:${value}`]),
+        );
+      });
+
+      const inputArray = ["Hello", "Goodbye", "How are you?"];
+
+      const result = await engine.localizeStringArray(inputArray, {
+        sourceLocale: "en",
+        targetLocale: "es",
+      });
+
+      // Verify the mapped object was passed to localizeObject
+      expect(mockLocalizeObject).toHaveBeenCalledWith(
+        {
+          item_0: "Hello",
+          item_1: "Goodbye",
+          item_2: "How are you?",
+        },
+        {
+          sourceLocale: "en",
+          targetLocale: "es",
+        },
+      );
+
+      // Verify the result maintains the original order
+      expect(result).toEqual(["ES:Hello", "ES:Goodbye", "ES:How are you?"]);
+      expect(result).toHaveLength(3);
+    });
+
+    it("should handle empty array", async () => {
+      const engine = new LingoDotDevEngine({ apiKey: "test" });
+      const mockLocalizeObject = vi.spyOn(engine, "localizeObject");
+      mockLocalizeObject.mockImplementation(async () => ({}));
+
+      const result = await engine.localizeStringArray([], {
+        sourceLocale: "en",
+        targetLocale: "es",
+      });
+
+      expect(mockLocalizeObject).toHaveBeenCalledWith(
+        {},
+        {
+          sourceLocale: "en",
+          targetLocale: "es",
+        },
+      );
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe("hints support", () => {
+    it("should send hints to the backend API", async () => {
+      // Mock global fetch
+      const mockFetch = vi.fn();
+      global.fetch = mockFetch as any;
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          data: {
+            "brand-name": "Optimum",
+            "team-label": "Equipo de la NHL",
+          },
+        }),
+      });
+
+      const engine = new LingoDotDevEngine({
+        apiKey: "test-api-key",
+        apiUrl: "https://test.api.url",
+      });
+
+      const hints = {
+        "brand-name": ["This is a brand name and should not be translated"],
+        "team-label": ["NHL stands for National Hockey League"],
+      };
+
+      await engine.localizeObject(
+        {
+          "brand-name": "Optimum",
+          "team-label": "NHL Team",
+        },
+        {
+          sourceLocale: "en",
+          targetLocale: "es",
+          hints,
+        },
+      );
+
+      // Verify fetch was called with correct parameters
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const fetchCall = mockFetch.mock.calls[0];
+      expect(fetchCall[0]).toBe("https://test.api.url/i18n");
+
+      // Parse the request body to verify hints are included
+      const requestBody = JSON.parse(fetchCall[1].body);
+      expect(requestBody.hints).toEqual(hints);
+      expect(requestBody.data).toEqual({
+        "brand-name": "Optimum",
+        "team-label": "NHL Team",
+      });
+      expect(requestBody.locale).toEqual({
+        source: "en",
+        target: "es",
+      });
+    });
+
+    it("should handle localizeObject without hints", async () => {
+      const mockFetch = vi.fn();
+      global.fetch = mockFetch as any;
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          data: {
+            greeting: "Hola",
+          },
+        }),
+      });
+
+      const engine = new LingoDotDevEngine({
+        apiKey: "test-api-key",
+        apiUrl: "https://test.api.url",
+      });
+
+      await engine.localizeObject(
+        {
+          greeting: "Hello",
+        },
+        {
+          sourceLocale: "en",
+          targetLocale: "es",
+        },
+      );
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(requestBody.hints).toBeUndefined();
     });
   });
 });

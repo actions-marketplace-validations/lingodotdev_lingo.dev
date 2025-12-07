@@ -1,11 +1,28 @@
-import { bucketTypeSchema, I18nConfig, localeCodeSchema, resolveOverriddenLocale } from "@lingo.dev/_spec";
+import {
+  bucketTypeSchema,
+  I18nConfig,
+  localeCodeSchema,
+  resolveOverriddenLocale,
+} from "@lingo.dev/_spec";
 import { Command } from "interactive-commander";
 import Z from "zod";
 import _ from "lodash";
 import * as path from "path";
 import { getConfig } from "../utils/config";
 import { getSettings } from "../utils/settings";
-import { CLIError } from "../utils/errors";
+import {
+  ConfigError,
+  AuthenticationError,
+  ValidationError,
+  LocalizationError,
+  BucketProcessingError,
+  getCLIErrorType,
+  isLocalizationError,
+  isBucketProcessingError,
+  ErrorDetail,
+  aggregateErrorAnalytics,
+  createPreviousErrorContext,
+} from "../utils/errors";
 import Ora from "ora";
 import createBucketLoader from "../loaders";
 import { createAuthenticator } from "../utils/auth";
@@ -14,44 +31,86 @@ import chalk from "chalk";
 import { createTwoFilesPatch } from "diff";
 import inquirer from "inquirer";
 import externalEditor from "external-editor";
-import { cacheChunk, deleteCache, getNormalizedCache } from "../utils/cache";
 import updateGitignore from "../utils/update-gitignore";
 import createProcessor from "../processor";
 import { withExponentialBackoff } from "../utils/exp-backoff";
 import trackEvent from "../utils/observability";
 import { createDeltaProcessor } from "../utils/delta";
-import { tryReadFile, writeFile } from "../utils/fs";
-import { flatten, unflatten } from "flat";
 
 export default new Command()
   .command("i18n")
-  .description("Run Localization engine")
+  .description(
+    "DEPRECATED: Run localization pipeline (prefer `run` command instead)",
+  )
   .helpOption("-h, --help", "Show help")
-  .option("--locale <locale>", "Locale to process", (val: string, prev: string[]) => (prev ? [...prev, val] : [val]))
-  .option("--bucket <bucket>", "Bucket to process", (val: string, prev: string[]) => (prev ? [...prev, val] : [val]))
+  .option(
+    "--locale <locale>",
+    "Limit processing to the listed target locale codes from i18n.json. Repeat the flag to include multiple locales. Defaults to all configured target locales",
+    (val: string, prev: string[]) => (prev ? [...prev, val] : [val]),
+  )
+  .option(
+    "--bucket <bucket>",
+    "Limit processing to specific bucket types defined in i18n.json (e.g., json, yaml, android). Repeat the flag to include multiple bucket types. Defaults to all buckets",
+    (val: string, prev: string[]) => (prev ? [...prev, val] : [val]),
+  )
   .option(
     "--key <key>",
-    "Key to process. Process only a specific translation key, useful for debugging or updating a single entry",
+    "Limit processing to a single translation key by exact match. Filters all buckets and locales to process only this key, useful for testing or debugging specific translations. Example: auth.login.title",
+    (val: string) => encodeURIComponent(val),
   )
   .option(
     "--file [files...]",
-    "File to process. Process only a specific path, may contain asterisk * to match multiple files. Useful if you have a lot of files and want to focus on a specific one. Specify more files separated by commas or spaces.",
+    "Filter processing to only buckets whose file paths contain these substrings. Example: 'components' to process only files in components directories",
   )
   .option(
     "--frozen",
-    `Run in read-only mode - fails if any translations need updating, useful for CI/CD pipelines to detect missing translations`,
+    "Validate translations are up-to-date without making changes - fails if source files, target files, or lockfile are out of sync. Ideal for CI/CD to ensure translation consistency before deployment",
   )
-  .option("--force", "Ignore lockfile and process all keys, useful for full re-translation")
-  .option("--verbose", "Show detailed output including intermediate processing data and API communication details")
-  .option("--interactive", "Enable interactive mode for reviewing and editing translations before they are applied")
-  .option("--api-key <api-key>", "Explicitly set the API key to use, override the default API key from settings")
-  .option("--debug", "Pause execution at start for debugging purposes, waits for user confirmation before proceeding")
-  .option("--strict", "Stop processing on first error instead of continuing with other locales/buckets")
+  .option(
+    "--force",
+    "Force re-translation of all keys, bypassing change detection. Useful when you want to regenerate translations with updated AI models or translation settings",
+  )
+  .option(
+    "--verbose",
+    "Print the translation data being processed as formatted JSON for each bucket and locale",
+  )
+  .option(
+    "--interactive",
+    "Review and edit AI-generated translations interactively before applying changes to files",
+  )
+  .option(
+    "--api-key <api-key>",
+    "Override API key from settings or environment variables",
+  )
+  .option(
+    "--debug",
+    "Pause before processing localization so you can attach a debugger",
+  )
+  .option(
+    "--strict",
+    "Stop immediately on first error instead of continuing to process remaining buckets and locales (fail-fast mode)",
+  )
   .action(async function (options) {
     updateGitignore();
 
     const ora = Ora();
-    const flags = parseFlags(options);
+    let flags: ReturnType<typeof parseFlags>;
+
+    try {
+      flags = parseFlags(options);
+    } catch (parseError: any) {
+      // Handle flag validation errors (like invalid locale codes)
+      await trackEvent("unknown", "cmd.i18n.error", {
+        errorType: "validation_error",
+        errorName: parseError.name || "ValidationError",
+        errorMessage: parseError.message || "Invalid command line options",
+        errorStack: parseError.stack,
+        fatal: true,
+        errorCount: 1,
+        stage: "flag_validation",
+      });
+      throw parseError;
+    }
 
     if (flags.debug) {
       // wait for user input, use inquirer
@@ -66,6 +125,7 @@ export default new Command()
 
     let hasErrors = false;
     let authId: string | null = null;
+    const errorDetails: ErrorDetail[] = [];
     try {
       ora.start("Loading configuration...");
       const i18nConfig = getConfig();
@@ -77,18 +137,27 @@ export default new Command()
       ora.succeed("Localization configuration is valid");
 
       ora.start("Connecting to Lingo.dev Localization Engine...");
-      const auth = await validateAuth(settings);
-      authId = auth.id;
-      ora.succeed(`Authenticated as ${auth.email}`);
+      const isByokMode = !!i18nConfig?.provider;
 
-      trackEvent(authId, "cmd.i18n.start", {
+      if (isByokMode) {
+        authId = null;
+        ora.succeed("Using external provider (BYOK mode)");
+      } else {
+        const auth = await validateAuth(settings);
+        authId = auth.id;
+        ora.succeed(`Authenticated as ${auth.email}`);
+      }
+
+      await trackEvent(authId, "cmd.i18n.start", {
         i18nConfig,
         flags,
       });
 
       let buckets = getBuckets(i18nConfig!);
       if (flags.bucket?.length) {
-        buckets = buckets.filter((bucket: any) => flags.bucket!.includes(bucket.type));
+        buckets = buckets.filter((bucket: any) =>
+          flags.bucket!.includes(bucket.type),
+        );
       }
       ora.succeed("Buckets retrieved");
 
@@ -102,8 +171,12 @@ export default new Command()
           })
           .filter((bucket: any) => bucket.paths.length > 0);
         if (buckets.length === 0) {
-          ora.fail("No buckets found. All buckets were filtered out by --file option.");
-          process.exit(1);
+          ora.fail(
+            "No buckets found. All buckets were filtered out by --file option.",
+          );
+          throw new Error(
+            "No buckets found. All buckets were filtered out by --file option.",
+          );
         } else {
           ora.info(`\x1b[36mProcessing only filtered buckets:\x1b[0m`);
           buckets.map((bucket: any) => {
@@ -115,7 +188,9 @@ export default new Command()
         }
       }
 
-      const targetLocales = flags.locale?.length ? flags.locale : i18nConfig!.locale.targets;
+      const targetLocales = flags.locale?.length
+        ? flags.locale
+        : i18nConfig!.locale.targets;
 
       // Ensure the lockfile exists
       ora.start("Setting up localization cache...");
@@ -125,21 +200,28 @@ export default new Command()
         ora.start("Creating i18n.lock...");
         for (const bucket of buckets) {
           for (const bucketPath of bucket.paths) {
-            const sourceLocale = resolveOverriddenLocale(i18nConfig!.locale.source, bucketPath.delimiter);
+            const sourceLocale = resolveOverriddenLocale(
+              i18nConfig!.locale.source,
+              bucketPath.delimiter,
+            );
             const bucketLoader = createBucketLoader(
               bucket.type,
               bucketPath.pathPattern,
               {
-                isCacheRestore: false,
                 defaultLocale: sourceLocale,
                 injectLocale: bucket.injectLocale,
+                formatter: i18nConfig!.formatter,
               },
               bucket.lockedKeys,
+              bucket.lockedPatterns,
+              bucket.ignoredKeys,
             );
             bucketLoader.setDefaultLocale(sourceLocale);
             await bucketLoader.init();
 
-            const sourceData = await bucketLoader.pull(i18nConfig!.locale.source);
+            const sourceData = await bucketLoader.pull(
+              i18nConfig!.locale.source,
+            );
 
             const deltaProcessor = createDeltaProcessor(bucketPath.pathPattern);
             const checksums = await deltaProcessor.createChecksums(sourceData);
@@ -150,151 +232,37 @@ export default new Command()
       } else {
         ora.succeed("Localization cache loaded");
       }
-      // Handle json key renames
-      for (const bucket of buckets) {
-        if (bucket.type !== "json") {
-          continue;
-        }
-        ora.start("Validating localization state...");
-        for (const bucketPath of bucket.paths) {
-          const sourceLocale = resolveOverriddenLocale(i18nConfig!.locale.source, bucketPath.delimiter);
-          const deltaProcessor = createDeltaProcessor(bucketPath.pathPattern);
-          const sourcePath = path.join(process.cwd(), bucketPath.pathPattern.replace("[locale]", sourceLocale));
-          const sourceContent = tryReadFile(sourcePath, null);
-          const sourceData = JSON.parse(sourceContent || "{}");
-          const sourceFlattenedData = flatten(sourceData, {
-            delimiter: "/",
-            transformKey(key) {
-              return encodeURIComponent(key);
-            },
-          }) as Record<string, any>;
-
-          for (const _targetLocale of targetLocales) {
-            const targetLocale = resolveOverriddenLocale(_targetLocale, bucketPath.delimiter);
-            const targetPath = path.join(process.cwd(), bucketPath.pathPattern.replace("[locale]", targetLocale));
-            const targetContent = tryReadFile(targetPath, null);
-            const targetData = JSON.parse(targetContent || "{}");
-            const targetFlattenedData = flatten(targetData, {
-              delimiter: "/",
-              transformKey(key) {
-                return encodeURIComponent(key);
-              },
-            }) as Record<string, any>;
-
-            const checksums = await deltaProcessor.loadChecksums();
-            const delta = await deltaProcessor.calculateDelta({
-              sourceData: sourceFlattenedData,
-              targetData: targetFlattenedData,
-              checksums,
-            });
-            if (!delta.hasChanges) {
-              continue;
-            }
-
-            for (const [oldKey, newKey] of delta.renamed) {
-              targetFlattenedData[newKey] = targetFlattenedData[oldKey];
-              delete targetFlattenedData[oldKey];
-            }
-
-            const updatedTargetData = unflatten(targetFlattenedData, {
-              delimiter: "/",
-              transformKey(key) {
-                return decodeURIComponent(key);
-              },
-            }) as Record<string, any>;
-
-            await writeFile(targetPath, JSON.stringify(updatedTargetData, null, 2));
-          }
-        }
-        ora.succeed("Localization state check completed");
-      }
-
-      // recover cache if exists
-      const cache = getNormalizedCache();
-      if (cache) {
-        console.log();
-        ora.succeed(`Cache loaded. Attempting recovery...`);
-        const cacheOra = Ora({ indent: 2 });
-
-        for (const bucket of buckets) {
-          cacheOra.info(`Processing bucket: ${bucket.type}`);
-          for (const bucketPath of bucket.paths) {
-            const bucketOra = Ora({ indent: 4 });
-            bucketOra.info(`Processing path: ${bucketPath.pathPattern}`);
-
-            const sourceLocale = resolveOverriddenLocale(i18nConfig!.locale.source, bucketPath.delimiter);
-            const bucketLoader = createBucketLoader(
-              bucket.type,
-              bucketPath.pathPattern,
-              {
-                isCacheRestore: true,
-                defaultLocale: sourceLocale,
-                injectLocale: bucket.injectLocale,
-              },
-              bucket.lockedKeys,
-            );
-            bucketLoader.setDefaultLocale(sourceLocale);
-            await bucketLoader.init();
-            const sourceData = await bucketLoader.pull(sourceLocale);
-            const cachedSourceData: Record<string, string> = {};
-
-            for (const targetLocale in cache) {
-              const targetData = await bucketLoader.pull(targetLocale);
-
-              for (const key in cache[targetLocale]) {
-                const { source, result } = cache[targetLocale][key];
-
-                if (sourceData[key] === source && targetData[key] !== result) {
-                  targetData[key] = result;
-                  cachedSourceData[key] = source;
-                }
-              }
-
-              await bucketLoader.push(targetLocale, targetData);
-              const deltaProcessor = createDeltaProcessor(bucketPath.pathPattern);
-              const checksums = await deltaProcessor.createChecksums(cachedSourceData);
-              await deltaProcessor.saveChecksums(checksums);
-
-              bucketOra.succeed(
-                `[${sourceLocale} -> ${targetLocale}] Recovered ${Object.keys(cachedSourceData).length} entries from cache`,
-              );
-            }
-          }
-        }
-        deleteCache();
-        if (flags.verbose) {
-          cacheOra.info("Cache file deleted.");
-        }
-      } else if (flags.verbose) {
-        ora.info("Cache file not found. Skipping recovery.");
-      }
 
       if (flags.frozen) {
         ora.start("Checking for lockfile updates...");
         let requiresUpdate: string | null = null;
         bucketLoop: for (const bucket of buckets) {
           for (const bucketPath of bucket.paths) {
-            const sourceLocale = resolveOverriddenLocale(i18nConfig!.locale.source, bucketPath.delimiter);
+            const sourceLocale = resolveOverriddenLocale(
+              i18nConfig!.locale.source,
+              bucketPath.delimiter,
+            );
 
             const bucketLoader = createBucketLoader(
               bucket.type,
               bucketPath.pathPattern,
               {
-                isCacheRestore: false,
                 defaultLocale: sourceLocale,
                 returnUnlocalizedKeys: true,
                 injectLocale: bucket.injectLocale,
               },
               bucket.lockedKeys,
+              bucket.lockedPatterns,
+              bucket.ignoredKeys,
             );
             bucketLoader.setDefaultLocale(sourceLocale);
             await bucketLoader.init();
 
-            const { unlocalizable: sourceUnlocalizable, ...sourceData } = await bucketLoader.pull(
-              i18nConfig!.locale.source,
-            );
+            const { unlocalizable: sourceUnlocalizable, ...sourceData } =
+              await bucketLoader.pull(i18nConfig!.locale.source);
             const deltaProcessor = createDeltaProcessor(bucketPath.pathPattern);
-            const sourceChecksums = await deltaProcessor.createChecksums(sourceData);
+            const sourceChecksums =
+              await deltaProcessor.createChecksums(sourceData);
             const savedChecksums = await deltaProcessor.loadChecksums();
 
             // Get updated data by comparing current checksums with saved checksums
@@ -310,12 +278,25 @@ export default new Command()
             }
 
             for (const _targetLocale of targetLocales) {
-              const targetLocale = resolveOverriddenLocale(_targetLocale, bucketPath.delimiter);
-              const { unlocalizable: targetUnlocalizable, ...targetData } = await bucketLoader.pull(targetLocale);
+              const targetLocale = resolveOverriddenLocale(
+                _targetLocale,
+                bucketPath.delimiter,
+              );
+              const { unlocalizable: targetUnlocalizable, ...targetData } =
+                await bucketLoader.pull(targetLocale);
 
-              const missingKeys = _.difference(Object.keys(sourceData), Object.keys(targetData));
-              const extraKeys = _.difference(Object.keys(targetData), Object.keys(sourceData));
-              const unlocalizableDataDiff = !_.isEqual(sourceUnlocalizable, targetUnlocalizable);
+              const missingKeys = _.difference(
+                Object.keys(sourceData),
+                Object.keys(targetData),
+              );
+              const extraKeys = _.difference(
+                Object.keys(targetData),
+                Object.keys(sourceData),
+              );
+              const unlocalizableDataDiff = !_.isEqual(
+                sourceUnlocalizable,
+                targetUnlocalizable,
+              );
 
               // translation is missing in the target file
               if (missingKeys.length > 0) {
@@ -342,12 +323,18 @@ export default new Command()
           const message = {
             updated: "Source file has been updated.",
             missing: "Target file is missing translations.",
-            extra: "Target file has extra translations not present in the source file.",
-            unlocalizable: "Unlocalizable data (such as booleans, dates, URLs, etc.) do not match.",
+            extra:
+              "Target file has extra translations not present in the source file.",
+            unlocalizable:
+              "Unlocalizable data (such as booleans, dates, URLs, etc.) do not match.",
           }[requiresUpdate];
-          ora.fail(`Localization data has changed; please update i18n.lock or run without --frozen.`);
+          ora.fail(
+            `Localization data has changed; please update i18n.lock or run without --frozen.`,
+          );
           ora.fail(`  Details: ${message}`);
-          process.exit(1);
+          throw new Error(
+            `Localization data has changed; please update i18n.lock or run without --frozen. Details: ${message}`,
+          );
         } else {
           ora.succeed("No lockfile updates required.");
         }
@@ -359,33 +346,47 @@ export default new Command()
           console.log();
           ora.info(`Processing bucket: ${bucket.type}`);
           for (const bucketPath of bucket.paths) {
-            const bucketOra = Ora({ indent: 2 }).info(`Processing path: ${bucketPath.pathPattern}`);
+            const bucketOra = Ora({ indent: 2 }).info(
+              `Processing path: ${bucketPath.pathPattern}`,
+            );
 
-            const sourceLocale = resolveOverriddenLocale(i18nConfig!.locale.source, bucketPath.delimiter);
+            const sourceLocale = resolveOverriddenLocale(
+              i18nConfig!.locale.source,
+              bucketPath.delimiter,
+            );
 
             const bucketLoader = createBucketLoader(
               bucket.type,
               bucketPath.pathPattern,
               {
-                isCacheRestore: false,
                 defaultLocale: sourceLocale,
                 injectLocale: bucket.injectLocale,
+                formatter: i18nConfig!.formatter,
               },
               bucket.lockedKeys,
+              bucket.lockedPatterns,
+              bucket.ignoredKeys,
             );
             bucketLoader.setDefaultLocale(sourceLocale);
             await bucketLoader.init();
             let sourceData = await bucketLoader.pull(sourceLocale);
 
             for (const _targetLocale of targetLocales) {
-              const targetLocale = resolveOverriddenLocale(_targetLocale, bucketPath.delimiter);
+              const targetLocale = resolveOverriddenLocale(
+                _targetLocale,
+                bucketPath.delimiter,
+              );
               try {
-                bucketOra.start(`[${sourceLocale} -> ${targetLocale}] (0%) Localization in progress...`);
+                bucketOra.start(
+                  `[${sourceLocale} -> ${targetLocale}] (0%) Localization in progress...`,
+                );
 
                 sourceData = await bucketLoader.pull(sourceLocale);
 
                 const targetData = await bucketLoader.pull(targetLocale);
-                const deltaProcessor = createDeltaProcessor(bucketPath.pathPattern);
+                const deltaProcessor = createDeltaProcessor(
+                  bucketPath.pathPattern,
+                );
                 const checksums = await deltaProcessor.loadChecksums();
                 const delta = await deltaProcessor.calculateDelta({
                   sourceData,
@@ -394,25 +395,39 @@ export default new Command()
                 });
                 let processableData = _.chain(sourceData)
                   .entries()
-                  .filter(([key, value]) => delta.added.includes(key) || delta.updated.includes(key) || !!flags.force)
+                  .filter(
+                    ([key, value]) =>
+                      delta.added.includes(key) ||
+                      delta.updated.includes(key) ||
+                      !!flags.force,
+                  )
                   .fromPairs()
                   .value();
 
                 if (flags.key) {
-                  processableData = _.pickBy(processableData, (_, key) => key === flags.key);
+                  processableData = _.pickBy(
+                    processableData,
+                    (_, key) => key === flags.key,
+                  );
                 }
                 if (flags.verbose) {
                   bucketOra.info(JSON.stringify(processableData, null, 2));
                 }
 
                 bucketOra.start(
-                  `[${sourceLocale} -> ${targetLocale}] [${Object.keys(processableData).length} entries] (0%) AI localization in progress...`,
+                  `[${sourceLocale} -> ${targetLocale}] [${
+                    Object.keys(processableData).length
+                  } entries] (0%) AI localization in progress...`,
                 );
                 let processPayload = createProcessor(i18nConfig!.provider, {
                   apiKey: settings.auth.apiKey,
                   apiUrl: settings.auth.apiUrl,
                 });
-                processPayload = withExponentialBackoff(processPayload, 3, 1000);
+                processPayload = withExponentialBackoff(
+                  processPayload,
+                  3,
+                  1000,
+                );
 
                 const processedTargetData = await processPayload(
                   {
@@ -423,17 +438,9 @@ export default new Command()
                     targetData,
                   },
                   (progress, sourceChunk, processedChunk) => {
-                    cacheChunk(targetLocale, sourceChunk, processedChunk);
-
-                    const progressLog = `[${sourceLocale} -> ${targetLocale}] [${Object.keys(processableData).length} entries] (${progress}%) AI localization in progress...`;
-                    if (flags.verbose) {
-                      bucketOra.info(progressLog);
-                      bucketOra.info(
-                        `(${progress}%) Caching chunk ${JSON.stringify(sourceChunk, null, 2)} -> ${JSON.stringify(processedChunk, null, 2)}`,
-                      );
-                    } else {
-                      bucketOra.text = progressLog;
-                    }
+                    bucketOra.text = `[${sourceLocale} -> ${targetLocale}] [${
+                      Object.keys(processableData).length
+                    } entries] (${progress}%) AI localization in progress...`;
                   },
                 );
 
@@ -441,7 +448,27 @@ export default new Command()
                   bucketOra.info(JSON.stringify(processedTargetData, null, 2));
                 }
 
-                let finalTargetData = _.merge({}, sourceData, targetData, processedTargetData);
+                let finalTargetData = _.merge(
+                  {},
+                  sourceData,
+                  targetData,
+                  processedTargetData,
+                );
+
+                // rename keys
+                finalTargetData = _.chain(finalTargetData)
+                  .entries()
+                  .map(([key, value]) => {
+                    const renaming = delta.renamed.find(
+                      ([oldKey, newKey]) => oldKey === key,
+                    );
+                    if (!renaming) {
+                      return [key, value];
+                    }
+                    return [renaming[1], value];
+                  })
+                  .fromPairs()
+                  .value();
 
                 if (flags.interactive) {
                   bucketOra.stop();
@@ -455,11 +482,22 @@ export default new Command()
                   });
 
                   finalTargetData = reviewedData;
-                  bucketOra.start(`Applying changes to ${bucketPath} (${targetLocale})`);
+                  bucketOra.start(
+                    `Applying changes to ${bucketPath} (${targetLocale})`,
+                  );
                 }
 
                 const finalDiffSize = _.chain(finalTargetData)
-                  .omitBy((value, key) => value === targetData[key])
+                  .omitBy((value, key) => {
+                    const targetValue = targetData[key];
+
+                    // For objects (like plural variations), use deep equality
+                    // For primitives (strings, numbers), use strict equality
+                    if (typeof value === "object" && value !== null) {
+                      return _.isEqual(value, targetValue);
+                    }
+                    return value === targetValue;
+                  })
                   .size()
                   .value();
 
@@ -467,12 +505,32 @@ export default new Command()
                 await bucketLoader.push(targetLocale, finalTargetData);
 
                 if (finalDiffSize > 0 || flags.force) {
-                  bucketOra.succeed(`[${sourceLocale} -> ${targetLocale}] Localization completed`);
+                  bucketOra.succeed(
+                    `[${sourceLocale} -> ${targetLocale}] Localization completed`,
+                  );
                 } else {
-                  bucketOra.succeed(`[${sourceLocale} -> ${targetLocale}] Localization completed (no changes).`);
+                  bucketOra.succeed(
+                    `[${sourceLocale} -> ${targetLocale}] Localization completed (no changes).`,
+                  );
                 }
               } catch (_error: any) {
-                const error = new Error(`[${sourceLocale} -> ${targetLocale}] Localization failed: ${_error.message}`);
+                const error = new LocalizationError(
+                  `[${sourceLocale} -> ${targetLocale}] Localization failed: ${_error.message}`,
+                  {
+                    bucket: bucket.type,
+                    sourceLocale,
+                    targetLocale,
+                    pathPattern: bucketPath.pathPattern,
+                  },
+                );
+                errorDetails.push({
+                  type: "locale_error",
+                  bucket: bucket.type,
+                  locale: `${sourceLocale} -> ${targetLocale}`,
+                  pathPattern: bucketPath.pathPattern,
+                  message: _error.message,
+                  stack: _error.stack,
+                });
                 if (flags.strict) {
                   throw error;
                 } else {
@@ -484,10 +542,21 @@ export default new Command()
 
             const deltaProcessor = createDeltaProcessor(bucketPath.pathPattern);
             const checksums = await deltaProcessor.createChecksums(sourceData);
-            await deltaProcessor.saveChecksums(checksums);
+            if (!flags.locale?.length) {
+              await deltaProcessor.saveChecksums(checksums);
+            }
           }
         } catch (_error: any) {
-          const error = new Error(`Failed to process bucket ${bucket.type}: ${_error.message}`);
+          const error = new BucketProcessingError(
+            `Failed to process bucket ${bucket.type}: ${_error.message}`,
+            bucket.type,
+          );
+          errorDetails.push({
+            type: "bucket_error",
+            bucket: bucket.type,
+            message: _error.message,
+            stack: _error.stack,
+          });
           if (flags.strict) {
             throw error;
           } else {
@@ -499,63 +568,63 @@ export default new Command()
       console.log();
       if (!hasErrors) {
         ora.succeed("Localization completed.");
-        deleteCache();
-        if (flags.verbose) {
-          ora.info("Cache file deleted.");
-        }
-        trackEvent(auth.id, "cmd.i18n.success", {
-          i18nConfig,
+        await trackEvent(authId, "cmd.i18n.success", {
+          i18nConfig: {
+            sourceLocale: i18nConfig!.locale.source,
+            targetLocales: i18nConfig!.locale.targets,
+            bucketTypes: Object.keys(i18nConfig!.buckets),
+          },
           flags,
+          bucketCount: buckets.length,
+          localeCount: targetLocales.length,
+          processedSuccessfully: true,
         });
       } else {
         ora.warn("Localization completed with errors.");
+        await trackEvent(authId || "unknown", "cmd.i18n.error", {
+          flags,
+          ...aggregateErrorAnalytics(
+            errorDetails,
+            buckets,
+            targetLocales,
+            i18nConfig!,
+          ),
+        });
       }
     } catch (error: any) {
       ora.fail(error.message);
 
-      trackEvent(authId || "unknown", "cmd.i18n.error", {
+      // Use robust error type detection
+      const errorType = getCLIErrorType(error);
+
+      // Extract additional context from typed errors
+      let errorContext: any = {};
+      if (isLocalizationError(error)) {
+        errorContext = {
+          bucket: error.bucket,
+          sourceLocale: error.sourceLocale,
+          targetLocale: error.targetLocale,
+          pathPattern: error.pathPattern,
+        };
+      } else if (isBucketProcessingError(error)) {
+        errorContext = {
+          bucket: error.bucket,
+        };
+      }
+
+      await trackEvent(authId || "unknown", "cmd.i18n.error", {
         flags,
-        error,
+        errorType,
+        errorName: error.name || "Error",
+        errorMessage: error.message,
+        errorStack: error.stack,
+        errorContext,
+        fatal: true,
+        errorCount: errorDetails.length + 1,
+        previousErrors: createPreviousErrorContext(errorDetails),
       });
-      process.exit(1);
     }
   });
-
-function calculateDataDelta(args: {
-  sourceData: Record<string, any>;
-  updatedSourceData: Record<string, any>;
-  targetData: Record<string, any>;
-}) {
-  // Calculate missing keys
-  const newKeys = _.difference(Object.keys(args.sourceData), Object.keys(args.targetData));
-  // Calculate updated keys
-  const updatedKeys = Object.keys(args.updatedSourceData);
-
-  // Calculate delta payload
-  const result = _.chain(args.sourceData)
-    .pickBy((value, key) => newKeys.includes(key) || updatedKeys.includes(key))
-    .value() as Record<string, any>;
-
-  return result;
-}
-
-async function retryWithExponentialBackoff<T>(
-  operation: () => Promise<T>,
-  maxAttempts: number,
-  baseDelay: number = 1000,
-): Promise<T> {
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    try {
-      return await operation();
-    } catch (error) {
-      if (attempt === maxAttempts - 1) throw error;
-
-      const delay = baseDelay * Math.pow(2, attempt);
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
-  }
-  throw new Error("Unreachable code");
-}
 
 function parseFlags(options: any) {
   return Z.object({
@@ -573,10 +642,12 @@ function parseFlags(options: any) {
   }).parse(options);
 }
 
-async function validateAuth(settings: ReturnType<typeof getSettings>) {
+// Export validateAuth for use in other commands
+export async function validateAuth(settings: ReturnType<typeof getSettings>) {
   if (!settings.auth.apiKey) {
-    throw new CLIError({
-      message: "Not authenticated. Please run `lingo.dev auth --login` to authenticate.",
+    throw new AuthenticationError({
+      message:
+        "Not authenticated. Please run `lingo.dev login` to authenticate.",
       docUrl: "authError",
     });
   }
@@ -587,8 +658,8 @@ async function validateAuth(settings: ReturnType<typeof getSettings>) {
   });
   const user = await authenticator.whoami();
   if (!user) {
-    throw new CLIError({
-      message: "Invalid API key. Please run `lingo.dev auth --login` to authenticate.",
+    throw new AuthenticationError({
+      message: "Invalid API key. Please run `lingo.dev login` to authenticate.",
       docUrl: "authError",
     });
   }
@@ -596,24 +667,36 @@ async function validateAuth(settings: ReturnType<typeof getSettings>) {
   return user;
 }
 
-function validateParams(i18nConfig: I18nConfig | null, flags: ReturnType<typeof parseFlags>) {
+function validateParams(
+  i18nConfig: I18nConfig | null,
+  flags: ReturnType<typeof parseFlags>,
+) {
   if (!i18nConfig) {
-    throw new CLIError({
-      message: "i18n.json not found. Please run `lingo.dev init` to initialize the project.",
+    throw new ConfigError({
+      message:
+        "i18n.json not found. Please run `lingo.dev init` to initialize the project.",
       docUrl: "i18nNotFound",
     });
   } else if (!i18nConfig.buckets || !Object.keys(i18nConfig.buckets).length) {
-    throw new CLIError({
-      message: "No buckets found in i18n.json. Please add at least one bucket containing i18n content.",
+    throw new ConfigError({
+      message:
+        "No buckets found in i18n.json. Please add at least one bucket containing i18n content.",
       docUrl: "bucketNotFound",
     });
-  } else if (flags.locale?.some((locale) => !i18nConfig.locale.targets.includes(locale))) {
-    throw new CLIError({
+  } else if (
+    flags.locale?.some((locale) => !i18nConfig.locale.targets.includes(locale))
+  ) {
+    throw new ValidationError({
       message: `One or more specified locales do not exist in i18n.json locale.targets. Please add them to the list and try again.`,
       docUrl: "localeTargetNotFound",
     });
-  } else if (flags.bucket?.some((bucket) => !i18nConfig.buckets[bucket as keyof typeof i18nConfig.buckets])) {
-    throw new CLIError({
+  } else if (
+    flags.bucket?.some(
+      (bucket) =>
+        !i18nConfig.buckets[bucket as keyof typeof i18nConfig.buckets],
+    )
+  ) {
+    throw new ValidationError({
       message: `One or more specified buckets do not exist in i18n.json. Please add them to the list and try again.`,
       docUrl: "bucketNotFound",
     });
@@ -634,7 +717,9 @@ async function reviewChanges(args: {
   // Early return if no changes
   if (currentStr === proposedStr && !args.force) {
     console.log(
-      `\n${chalk.blue(args.pathPattern)} (${chalk.yellow(args.targetLocale)}): ${chalk.gray("No changes to review")}`,
+      `\n${chalk.blue(args.pathPattern)} (${chalk.yellow(
+        args.targetLocale,
+      )}): ${chalk.gray("No changes to review")}`,
     );
     return args.proposedData;
   }
@@ -660,7 +745,11 @@ async function reviewChanges(args: {
     })
     .join("\n");
 
-  console.log(`\nReviewing changes for ${chalk.blue(args.pathPattern)} (${chalk.yellow(args.targetLocale)}):`);
+  console.log(
+    `\nReviewing changes for ${chalk.blue(args.pathPattern)} (${chalk.yellow(
+      args.targetLocale,
+    )}):`,
+  );
   console.log(coloredDiff);
 
   const { action } = await inquirer.prompt([
@@ -701,9 +790,19 @@ async function reviewChanges(args: {
   for (const key of changes) {
     console.log(`\nEditing value for: ${chalk.cyan(key)}`);
     console.log(chalk.gray("Source text:"), chalk.blue(args.sourceData[key]));
-    console.log(chalk.gray("Current value:"), chalk.red(args.currentData[key] || "(empty)"));
-    console.log(chalk.gray("Suggested value:"), chalk.green(args.proposedData[key]));
-    console.log(chalk.gray("\nYour editor will open. Edit the text and save to continue."));
+    console.log(
+      chalk.gray("Current value:"),
+      chalk.red(args.currentData[key] || "(empty)"),
+    );
+    console.log(
+      chalk.gray("Suggested value:"),
+      chalk.green(args.proposedData[key]),
+    );
+    console.log(
+      chalk.gray(
+        "\nYour editor will open. Edit the text and save to continue.",
+      ),
+    );
     console.log(chalk.gray("------------"));
 
     try {
@@ -734,11 +833,15 @@ async function reviewChanges(args: {
       if (customValue) {
         customData[key] = customValue;
       } else {
-        console.log(chalk.yellow("Empty value provided, keeping the current value."));
+        console.log(
+          chalk.yellow("Empty value provided, keeping the current value."),
+        );
         customData[key] = args.currentData[key] || args.proposedData[key];
       }
     } catch (error) {
-      console.log(chalk.red("Error while editing, keeping the suggested value."));
+      console.log(
+        chalk.red("Error while editing, keeping the suggested value."),
+      );
       customData[key] = args.proposedData[key];
     }
   }

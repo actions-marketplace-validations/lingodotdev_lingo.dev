@@ -1,4 +1,5 @@
 import Z from "zod";
+import { isValidLocale } from "@lingo.dev/_locales";
 
 const localeMap = {
   // Urdu (Pakistan)
@@ -8,7 +9,10 @@ const localeMap = {
   // Turkish (Turkey)
   tr: ["tr-TR"],
   // Tamil (India)
-  ta: ["ta-IN"],
+  ta: [
+    "ta-IN", // India
+    "ta-SG", // Singapore
+  ],
   // Serbian
   sr: [
     "sr-RS", // Serbian (Latin)
@@ -21,8 +25,11 @@ const localeMap = {
   he: ["he-IL"],
   // Estonian (Estonia)
   et: ["et-EE"],
-  // Greek (Greece)
-  el: ["el-GR"],
+  // Greek
+  el: [
+    "el-GR", // Greece
+    "el-CY", // Cyprus
+  ],
   // Danish (Denmark)
   da: ["da-DK"],
   // Azerbaijani (Azerbaijan)
@@ -37,6 +44,8 @@ const localeMap = {
     "en-GB", // United Kingdom
     "en-AU", // Australia
     "en-CA", // Canada
+    "en-SG", // Singapore
+    "en-IE", // Ireland
   ],
   // Spanish
   es: [
@@ -50,6 +59,7 @@ const localeMap = {
     "fr-FR", // France
     "fr-CA", // Canada
     "fr-BE", // Belgium
+    "fr-LU", // Luxembourg
   ],
   // Catalan (Spain)
   ca: ["ca-ES"],
@@ -89,6 +99,7 @@ const localeMap = {
     "zh-CN", // Simplified Chinese (China)
     "zh-TW", // Traditional Chinese (Taiwan)
     "zh-HK", // Traditional Chinese (Hong Kong)
+    "zh-SG", // Simplified Chinese (Singapore)
     "zh-Hans", // Simplified Chinese
     "zh-Hant", // Traditional Chinese
     "zh-Hant-HK", // Traditional Chinese (Hong Kong)
@@ -122,6 +133,7 @@ const localeMap = {
   pl: ["pl-PL"],
   // Indonesian (Indonesia)
   id: ["id-ID"],
+  is: ["is-IS"],
   // Malay (Malaysia)
   ms: ["ms-MY"],
   // Finnish (Finland)
@@ -200,6 +212,14 @@ const localeMap = {
   te: ["te-IN"],
   // Kinyarwanda (Rwanda)
   rw: ["rw-RW"],
+  // Georgian (Georgia)
+  ka: ["ka-GE"],
+  // Malayalam (India)
+  ml: ["ml-IN"],
+  // Armenian (Armenia)
+  hy: ["hy-AM"],
+  // Macedonian (Macedonia)
+  mk: ["mk-MK"],
 } as const;
 
 export type LocaleCodeShort = keyof typeof localeMap;
@@ -208,8 +228,12 @@ export type LocaleCode = LocaleCodeShort | LocaleCodeFull;
 export type LocaleDelimiter = "-" | "_" | null;
 
 export const localeCodesShort = Object.keys(localeMap) as LocaleCodeShort[];
-export const localeCodesFull = Object.values(localeMap).flat() as LocaleCodeFull[];
-export const localeCodesFullUnderscore = localeCodesFull.map((value) => value.replace("-", "_"));
+export const localeCodesFull = Object.values(
+  localeMap,
+).flat() as LocaleCodeFull[];
+export const localeCodesFullUnderscore = localeCodesFull.map((value) =>
+  value.replace("-", "_"),
+);
 export const localeCodesFullExplicitRegion = localeCodesFull.map((value) => {
   const chunks = value.split("-");
   const result = [chunks[0], "-r", chunks.slice(1).join("-")].join("");
@@ -222,9 +246,16 @@ export const localeCodes = [
   ...localeCodesFullExplicitRegion,
 ] as LocaleCode[];
 
-export const localeCodeSchema = Z.string().refine((value) => localeCodes.includes(value as any), {
-  message: "Invalid locale code",
-});
+export const localeCodeSchema = Z.string().refine(
+  (value) => {
+    // Normalize locale before validation
+    const normalized = normalizeLocale(value);
+    return isValidLocale(normalized);
+  },
+  {
+    message: "Invalid locale code",
+  },
+);
 
 /**
  * Resolves a locale code to its full locale representation.
@@ -280,7 +311,10 @@ export const getLocaleCodeDelimiter = (locale: string): LocaleDelimiter => {
  * @returns {string} The locale string with the replaced delimiter, or the original locale if no delimiter is provided.
  */
 
-export const resolveOverriddenLocale = (locale: string, delimiter?: LocaleDelimiter): string => {
+export const resolveOverriddenLocale = (
+  locale: string,
+  delimiter?: LocaleDelimiter,
+): string => {
   if (!delimiter) {
     return locale;
   }

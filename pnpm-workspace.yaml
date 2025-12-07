@@ -1,5 +1,8 @@
 packages:
   - "./packages/*"
+  - "./demo/*"
   - "./integrations/*"
   - "./legacy/*"
   - "./action"
+  - "./php/*"
+  - "./scripts/*"
